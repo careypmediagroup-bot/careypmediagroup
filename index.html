@@ -154,7 +154,8 @@
           <input id="signupName" type="text" autocomplete="given-name" placeholder="e.g. Alex or @yourhandle">
           <label for="signupEmail">Email address</label>
           <input id="signupEmail" type="email" required autocomplete="email" placeholder="you@example.com">
-          <button type="submit" class="btn btn-primary" style="width:100%;">Subscribe free</button>
+          <input type="text" id="signupWebsite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;width:0;">
+          <button type="submit" id="signupBtn" class="btn btn-primary" style="width:100%;">Subscribe free</button>
           <div class="note" id="signupNote">One email a day. Unsubscribe any time.</div>
         </form>
       </div>
@@ -194,34 +195,36 @@
   </footer>
 
   <script>
-    // Set to the real Beehiiv hosted subscribe URL ending in /create once the publication exists.
-    const BEEHIIV_CREATE_URL = '';
+    // Public signup gateway (forwards to the WORKHORSE newsletter roster)
+    const SIGNUP_URL = 'https://careypphoto-ai.taile1557e.ts.net:8443/subscribe';
 
-    function handleSignup(e) {
+    async function handleSignup(e) {
       e.preventDefault();
       const email = document.getElementById('signupEmail').value.trim();
+      const name = document.getElementById('signupName').value.trim();
+      const honeypot = document.getElementById('signupWebsite').value;
       const note = document.getElementById('signupNote');
+      const btn = document.getElementById('signupBtn');
       if (!email) return;
-      if (!BEEHIIV_CREATE_URL) {
-        note.style.color = '#f5c04a';
-        note.textContent = 'Signups open shortly. Email careypmediagroup@gmail.com to be added now.';
-        return;
-      }
-      const f = document.createElement('form');
-      f.method = 'POST';
-      f.action = BEEHIIV_CREATE_URL;
-      f.target = '_blank';
-      f.style.display = 'none';
-      Object.entries({ email, double_opt: 'false', auto_login_enabled: 'true', sent_from_orchid: 'true', utm_source: 'careypmediagroup.com' }).forEach(([k, v]) => {
-        const i = document.createElement('input');
-        i.type = 'hidden'; i.name = k; i.value = v;
-        f.appendChild(i);
-      });
-      document.body.appendChild(f);
-      f.submit();
-      f.remove();
-      note.style.color = '#10b981';
-      note.textContent = 'Thanks. Check the new tab to confirm your subscription.';
+      btn.disabled = true;
+      btn.textContent = 'Subscribing...';
+      let ok = false;
+      let message = 'Something went wrong. Please email careypmediagroup@gmail.com to be added.';
+      try {
+        const res = await fetch(SIGNUP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name, publications: ['creator_pulse'], website: honeypot })
+        });
+        const data = await res.json().catch(() => ({}));
+        ok = res.ok && data.ok;
+        if (!ok && data.error) message = data.error;
+      } catch (err) {}
+      btn.disabled = false;
+      btn.textContent = 'Subscribe free';
+      note.style.color = ok ? '#10b981' : '#f5c04a';
+      note.textContent = ok ? 'You are subscribed. Check your inbox for a welcome email.' : message;
+      if (ok) document.getElementById('signupForm').reset();
     }
   </script>
 </body>
